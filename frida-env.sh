@@ -16,11 +16,6 @@
 : "${FRIDA_HOME:=$HOME/.frida-envs}"
 mkdir -p "$FRIDA_HOME"
 
-# -- Shell detection ----------------------------------------------------------
-_frida_shell="unknown"
-[ -n "${ZSH_VERSION:-}"  ] && _frida_shell="zsh"
-[ -n "${BASH_VERSION:-}" ] && _frida_shell="bash"
-
 # -- Core helper --------------------------------------------------------------
 _frida_activate_version() {
   local version="$1"
@@ -64,11 +59,9 @@ _frida_activate_version() {
   # shellcheck source=/dev/null
   . "$activate_script"
 
-  # Flush command hash cache so new binaries are found without reopening shell
-  case "$_frida_shell" in
-    zsh)  rehash  ;;
-    bash) hash -r ;;
-  esac
+  # Flush command hash cache so new binaries are found without reopening shell.
+  # hash -r works unconditionally in both zsh and bash.
+  hash -r 2>/dev/null
 
   echo "[frida-env] Activated  frida ${version}  ->  $(command -v frida)"
 }
@@ -106,31 +99,23 @@ _frida_try_handle() {
   return 1
 }
 
-case "$_frida_shell" in
-  zsh)
-    # Preserve any existing handler (e.g. Homebrew's)
-    if typeset -f command_not_found_handler >/dev/null 2>&1; then
-      eval "$(typeset -f command_not_found_handler | \
-        sed '1 s/command_not_found_handler/command_not_found_handler_orig/')"
-    fi
-    command_not_found_handler() {
-      _frida_try_handle "$1" && return 0
-      if typeset -f command_not_found_handler_orig >/dev/null 2>&1; then
-        command_not_found_handler_orig "$@"
-      else
-        echo "zsh: command not found: $1" >&2
-        return 127
-      fi
-    }
-    ;;
-  bash)
-    command_not_found_handle() {
-      _frida_try_handle "$1" && return 0
-      echo "bash: $1: command not found" >&2
-      return 127
-    }
-    ;;
-esac
+# zsh - runs in the current shell so PATH changes from `source` persist
+if [ -n "${ZSH_VERSION:-}" ]; then
+  command_not_found_handler() {
+    _frida_try_handle "$1" && return 0
+    echo "zsh: command not found: $1" >&2
+    return 127
+  }
+fi
+
+# bash
+if [ -n "${BASH_VERSION:-}" ]; then
+  command_not_found_handle() {
+    _frida_try_handle "$1" && return 0
+    echo "bash: $1: command not found" >&2
+    return 127
+  }
+fi
 
 # -- Convenience commands -----------------------------------------------------
 frida-list() {
