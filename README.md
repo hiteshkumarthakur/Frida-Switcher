@@ -3,6 +3,8 @@
 Switch between multiple [Frida](https://frida.re) versions instantly.
 One command activates — unknown versions are auto-created on first use.
 
+![frida-version-manager demo](output.gif)
+
 ```
 frida-16.6.3   # activate frida 16.6.3  (creates it if needed)
 frida-17.8.0   # switch to 17.8.0
