@@ -1,0 +1,28 @@
+# Frida virtual environments - user-specific, never commit
+frida_*/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.Python
+
+# macOS
+.DS_Store
+.AppleDouble
+
+# Windows
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# Linux
+*~
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
