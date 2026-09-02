@@ -72,15 +72,27 @@ _frida_register_version() {
   eval "frida-${version}() { _frida_activate_version '${version}'; }"
 }
 
-# -- Pre-register all existing frida_* dirs at shell startup ------------------
-for _frida_dir in "${FRIDA_HOME}"/frida_*/; do
-  if [ -d "$_frida_dir" ]; then
-    _frida_ver="${_frida_dir##*/frida_}"
-    _frida_ver="${_frida_ver%/}"
-    [ -n "$_frida_ver" ] && _frida_register_version "$_frida_ver"
+# -- Iterate frida_* dirs (zsh-safe when none exist yet) ----------------------
+_frida_each_env_dir() {
+  if [ -n "${ZSH_VERSION:-}" ]; then
+    setopt local_options nullglob
   fi
-done
-unset _frida_dir _frida_ver
+  for _frida_dir in "${FRIDA_HOME}"/frida_*/; do
+    [ -d "$_frida_dir" ] || continue
+    "$@" "$_frida_dir"
+  done
+}
+
+# -- Pre-register all existing frida_* dirs at shell startup ------------------
+_frida_pre_register_dir() {
+  local _frida_dir="$1"
+  local _frida_ver="${_frida_dir##*/frida_}"
+  _frida_ver="${_frida_ver%/}"
+  [ -n "$_frida_ver" ] && _frida_register_version "$_frida_ver"
+}
+
+_frida_each_env_dir _frida_pre_register_dir
+unset _frida_pre_register_dir
 
 # -- command-not-found handlers -----------------------------------------------
 # Intercepts frida-X.Y.Z for versions not yet registered; auto-creates them.
@@ -121,6 +133,7 @@ fi
 frida-list() {
   echo "Frida environments in ${FRIDA_HOME}:"
   local found=0
+  [ -n "${ZSH_VERSION:-}" ] && setopt local_options nullglob
   for _d in "${FRIDA_HOME}"/frida_*/; do
     if [ -d "${_d}/.venv" ]; then
       local ver="${_d##*/frida_}"; ver="${ver%/}"
